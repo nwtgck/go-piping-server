@@ -7,28 +7,44 @@ import (
     "net/http"
 )
 
-// TODO: This adapt only one pipe
-var receiverChan chan http.ResponseWriter
-var senderChan chan *http.Request
+type SenderReceiver struct {
+	senderChan   chan *http.Request
+	receiverChan chan http.ResponseWriter
+}
+
+var pathToSenderReceiver map[string]*SenderReceiver
+
 
 func init() {
-	receiverChan = make(chan http.ResponseWriter)
-	senderChan = make(chan *http.Request)
+	// Initialize map
+	pathToSenderReceiver = map[string]*SenderReceiver{}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Method)
+	path := r.URL.Path
+
+	if pathToSenderReceiver[path] == nil {
+		pathToSenderReceiver[path] = &SenderReceiver{
+			senderChan: make(chan *http.Request),
+			receiverChan: make(chan http.ResponseWriter),
+		}
+	}
+
+	sr := pathToSenderReceiver[path]
+
+	// TODO: should check collision (e.g. GET the same path twice)
 	switch r.Method {
 	case "GET":
-		go func(){ receiverChan <- w }()
-		sender := <-senderChan
+		go func(){ sr.receiverChan <- w }()
+		sender := <-sr.senderChan
 		// TODO: Hard code: content-type
 		w.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(w, sender.Body)
 	case "POST":
 	case "PUT":
-		go func (){ senderChan <- r }()
-		receiver := <-receiverChan
+		go func (){ sr.senderChan <- r }()
+		receiver := <-sr.receiverChan
 		// TODO: Hard code: content-type
 		receiver.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(receiver, r.Body)
