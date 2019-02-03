@@ -1,15 +1,15 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 	"io"
 	"log"
-    "net/http"
+	"net/http"
 )
 
 type SenderReceiver struct {
-	senderChan   chan *http.Request
 	receiverChan chan http.ResponseWriter
+	finishedChan chan bool
 }
 
 var pathToSenderReceiver map[string]*SenderReceiver
@@ -24,10 +24,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Method)
 	path := r.URL.Path
 
-	if pathToSenderReceiver[path] == nil {
+	if _, ok  := pathToSenderReceiver[path]; !ok {
 		pathToSenderReceiver[path] = &SenderReceiver{
-			senderChan: make(chan *http.Request),
 			receiverChan: make(chan http.ResponseWriter),
+			finishedChan: make(chan bool),
 		}
 	}
 
@@ -37,17 +37,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		go func(){ sr.receiverChan <- w }()
-		sender := <-sr.senderChan
-		// TODO: Hard code: content-type
-		w.Header().Add("Content-Type", "application/octet-stream")
-		io.Copy(w, sender.Body)
+		// Wait for finish
+		<-sr.finishedChan
 	case "POST":
 	case "PUT":
-		go func (){ sr.senderChan <- r }()
 		receiver := <-sr.receiverChan
 		// TODO: Hard code: content-type
 		receiver.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(receiver, r.Body)
+		sr.finishedChan <- true
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", r.URL.Path, r.Method)
 }
