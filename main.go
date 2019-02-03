@@ -22,11 +22,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		go func(){ receiverChan <- w }()
 		sender := <-senderChan
+		// TODO: Hard code: content-type
+		w.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(w, sender.Body)
 	case "POST":
 	case "PUT":
 		go func (){ senderChan <- r }()
 		receiver := <-receiverChan
+		// TODO: Hard code: content-type
+		receiver.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(receiver, r.Body)
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", r.URL.Path, r.Method)
@@ -35,5 +39,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/", handler)
 	fmt.Println("Running...")
+	// TODO: Hard code port number
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
