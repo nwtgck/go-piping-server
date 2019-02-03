@@ -34,6 +34,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	sr := pathToSenderReceiver[path]
 
 	// TODO: should check collision (e.g. GET the same path twice)
+	// TODO: should close if either sender or receiver closes
 	switch r.Method {
 	case "GET":
 		go func(){ sr.receiverChan <- w }()
