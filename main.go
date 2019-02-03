@@ -46,6 +46,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		receiver.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(receiver, r.Body)
 		sr.finishedChan <- true
+		delete(pathToSenderReceiver, path)
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", r.URL.Path, r.Method)
 }
