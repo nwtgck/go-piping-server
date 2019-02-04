@@ -7,33 +7,33 @@ import (
 	"net/http"
 )
 
-type SenderReceiver struct {
+type Receiver struct {
 	receiverChan chan http.ResponseWriter
 	finishedChan chan bool
 }
 
-var pathToSenderReceiver map[string]*SenderReceiver
+var pathToReceiver map[string]*Receiver
 
 
 func init() {
 	// Initialize map
-	pathToSenderReceiver = map[string]*SenderReceiver{}
+	pathToReceiver = map[string]*Receiver{}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Method)
 	path := r.URL.Path
 
-	if _, ok  := pathToSenderReceiver[path]; !ok {
-		pathToSenderReceiver[path] = &SenderReceiver{
+	if _, ok  := pathToReceiver[path]; !ok {
+		pathToReceiver[path] = &Receiver{
 			receiverChan: make(chan http.ResponseWriter),
 			finishedChan: make(chan bool),
 		}
 	}
 
-	sr := pathToSenderReceiver[path]
+	sr := pathToReceiver[path]
 
-	// TODO: should check collision (e.g. GET the same path twice)
+	// TODO: should block collision (e.g. GET the same path twice)
 	// TODO: should close if either sender or receiver closes
 	switch r.Method {
 	case "GET":
@@ -47,7 +47,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		receiver.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(receiver, r.Body)
 		sr.finishedChan <- true
-		delete(pathToSenderReceiver, path)
+		delete(pathToReceiver, path)
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", r.URL.Path, r.Method)
 }
