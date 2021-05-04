@@ -12,32 +12,32 @@ type Receiver struct {
 	sendFinishedCh   chan struct{}
 }
 
-var pathToReceiver map[string]*Receiver
-
-
-func init() {
-	// Initialize map
-	pathToReceiver = map[string]*Receiver{}
+type PipingServer struct {
+	pathToReceiver map[string]*Receiver
 }
 
-func handler(responseWriter http.ResponseWriter, req *http.Request) {
+func NewServer() *PipingServer {
+	return &PipingServer{pathToReceiver: map[string]*Receiver{}}
+}
+
+func (s *PipingServer) Handler(responseWriter http.ResponseWriter, req *http.Request) {
 	fmt.Println(req.Method)
 	path := req.URL.Path
 
 	// Set receiver if not found on the path
-	if _, ok  := pathToReceiver[path]; !ok {
-		pathToReceiver[path] = &Receiver{
+	if _, ok := s.pathToReceiver[path]; !ok {
+		s.pathToReceiver[path] = &Receiver{
 			responseWriterCh: make(chan http.ResponseWriter),
 			sendFinishedCh:   make(chan struct{}),
 		}
 	}
-	receiver := pathToReceiver[path]
+	receiver := s.pathToReceiver[path]
 
 	// TODO: should block collision (e.g. GET the same path twice)
 	// TODO: should close if either sender or receiver closes
 	switch req.Method {
 	case "GET":
-		go func(){ receiver.responseWriterCh <- responseWriter }()
+		go func() { receiver.responseWriterCh <- responseWriter }()
 		// Wait for finish
 		<-receiver.sendFinishedCh
 	case "POST":
@@ -47,13 +47,14 @@ func handler(responseWriter http.ResponseWriter, req *http.Request) {
 		receiverResWriter.Header().Add("Content-Type", "application/octet-stream")
 		io.Copy(receiverResWriter, req.Body)
 		receiver.sendFinishedCh <- struct{}{}
-		delete(pathToReceiver, path)
+		delete(s.pathToReceiver, path)
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", req.URL.Path, req.Method)
 }
 
 func main() {
+	pipingServer := NewServer()
 	fmt.Println("Running...")
 	// TODO: Hard code port number
-	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(handler)))
+	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(pipingServer.Handler)))
 }
