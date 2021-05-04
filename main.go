@@ -5,11 +5,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync/atomic"
 )
 
 type pipe struct {
 	receiverResWriterCh chan http.ResponseWriter
 	sendFinishedCh      chan struct{}
+	isSenderConnected   int32 // NOTE: for atomic operation
 }
 
 type PipingServer struct {
@@ -29,11 +31,11 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		s.pathToPipe[path] = &pipe{
 			receiverResWriterCh: make(chan http.ResponseWriter, 1),
 			sendFinishedCh:      make(chan struct{}),
+			isSenderConnected:   0,
 		}
 	}
 	pi := s.pathToPipe[path]
 
-	// TODO: should block collision (e.g. POST the same path twice)
 	// TODO: should close if either sender or receiver closes
 	switch req.Method {
 	case "GET":
@@ -50,6 +52,13 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 	case "POST":
 		fallthrough
 	case "PUT":
+		// If a sender is already connected
+		if !atomic.CompareAndSwapInt32(&pi.isSenderConnected, 0, 1) {
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.WriteHeader(400)
+			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Another sender has been connected on '%s'.\n", path)))
+			return
+		}
 		receiverResWriter := <-pi.receiverResWriterCh
 		// TODO: Hard code: content-type
 		receiverResWriter.Header().Add("Content-Type", "application/octet-stream")
