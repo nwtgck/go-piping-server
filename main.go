@@ -41,6 +41,7 @@ func (s *PipingServer) Handler(responseWriter http.ResponseWriter, req *http.Req
 		// Wait for finish
 		<-receiver.sendFinishedCh
 	case "POST":
+		fallthrough
 	case "PUT":
 		receiverResWriter := <-receiver.responseWriterCh
 		// TODO: Hard code: content-type
