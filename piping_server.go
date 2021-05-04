@@ -68,6 +68,13 @@ func (s *PipingServer) getPipe(path string) *pipe {
 	return s.pathToPipe[path]
 }
 
+func transferHeaderIfExists(w http.ResponseWriter, req *http.Request, header string) {
+	values := req.Header.Values(header)
+	if len(values) == 1 {
+		w.Header().Add(header, values[0])
+	}
+}
+
 func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request) {
 	fmt.Println(req.Method)
 	path := req.URL.Path
@@ -130,8 +137,11 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			return
 		}
 		receiverResWriter := <-pi.receiverResWriterCh
-		// TODO: Hard code: content-type
-		receiverResWriter.Header().Add("Content-Type", "application/octet-stream")
+		transferHeaderIfExists(receiverResWriter, req, "Content-Type")
+		transferHeaderIfExists(receiverResWriter, req, "Content-Length")
+		transferHeaderIfExists(receiverResWriter, req, "Content-Disposition")
+		receiverResWriter.Header().Set("Access-Control-Allow-Origin", "*")
+		receiverResWriter.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type")
 		io.Copy(receiverResWriter, req.Body)
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
