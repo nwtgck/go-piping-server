@@ -8,8 +8,8 @@ import (
 )
 
 type Receiver struct {
-	receiverChan chan http.ResponseWriter
-	finishedChan chan bool
+	responseWriterCh chan http.ResponseWriter
+	sendFinishedCh   chan struct{}
 }
 
 var pathToReceiver map[string]*Receiver
@@ -20,41 +20,40 @@ func init() {
 	pathToReceiver = map[string]*Receiver{}
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.Method)
-	path := r.URL.Path
+func handler(responseWriter http.ResponseWriter, req *http.Request) {
+	fmt.Println(req.Method)
+	path := req.URL.Path
 
+	// Set receiver if not found on the path
 	if _, ok  := pathToReceiver[path]; !ok {
 		pathToReceiver[path] = &Receiver{
-			receiverChan: make(chan http.ResponseWriter),
-			finishedChan: make(chan bool),
+			responseWriterCh: make(chan http.ResponseWriter),
+			sendFinishedCh:   make(chan struct{}),
 		}
 	}
-
-	sr := pathToReceiver[path]
+	receiver := pathToReceiver[path]
 
 	// TODO: should block collision (e.g. GET the same path twice)
 	// TODO: should close if either sender or receiver closes
-	switch r.Method {
+	switch req.Method {
 	case "GET":
-		go func(){ sr.receiverChan <- w }()
+		go func(){ receiver.responseWriterCh <- responseWriter }()
 		// Wait for finish
-		<-sr.finishedChan
+		<-receiver.sendFinishedCh
 	case "POST":
 	case "PUT":
-		receiver := <-sr.receiverChan
+		receiverResWriter := <-receiver.responseWriterCh
 		// TODO: Hard code: content-type
-		receiver.Header().Add("Content-Type", "application/octet-stream")
-		io.Copy(receiver, r.Body)
-		sr.finishedChan <- true
+		receiverResWriter.Header().Add("Content-Type", "application/octet-stream")
+		io.Copy(receiverResWriter, req.Body)
+		receiver.sendFinishedCh <- struct{}{}
 		delete(pathToReceiver, path)
 	}
-	fmt.Printf("Trasfering %s has finished in %s method.\n", r.URL.Path, r.Method)
+	fmt.Printf("Trasfering %s has finished in %s method.\n", req.URL.Path, req.Method)
 }
 
 func main() {
-	http.HandleFunc("/", handler)
 	fmt.Println("Running...")
 	// TODO: Hard code port number
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(handler)))
 }
