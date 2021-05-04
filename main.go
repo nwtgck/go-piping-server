@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"sync/atomic"
 )
 
@@ -16,10 +17,14 @@ type pipe struct {
 
 type PipingServer struct {
 	pathToPipe map[string]*pipe
+	mutex      *sync.Mutex
 }
 
 func NewServer() *PipingServer {
-	return &PipingServer{pathToPipe: map[string]*pipe{}}
+	return &PipingServer{
+		pathToPipe: map[string]*pipe{},
+		mutex:      new(sync.Mutex),
+	}
 }
 
 func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request) {
@@ -27,6 +32,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 	path := req.URL.Path
 
 	// Set pipe if not found on the path
+	s.mutex.Lock()
 	if _, ok := s.pathToPipe[path]; !ok {
 		s.pathToPipe[path] = &pipe{
 			receiverResWriterCh: make(chan http.ResponseWriter, 1),
@@ -34,6 +40,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			isSenderConnected:   0,
 		}
 	}
+	s.mutex.Unlock()
 	pi := s.pathToPipe[path]
 
 	// TODO: should close if either sender or receiver closes
