@@ -2,11 +2,28 @@ package piping_server
 
 import (
 	"fmt"
+	"github.com/nwtgck/go-piping-server/version"
 	"io"
 	"net/http"
 	"sync"
 	"sync/atomic"
 )
+
+const (
+	reservedPathIndex      = "/"
+	reservedPathVersion    = "/version"
+	reservedPathHelp       = "/help"
+	reservedPathFaviconIco = "/favicon.ico"
+	reservedPathRobotsTxt  = "/robots.txt"
+)
+
+var reservedPaths = [...]string{
+	reservedPathIndex,
+	reservedPathVersion,
+	reservedPathHelp,
+	reservedPathFaviconIco,
+	reservedPathRobotsTxt,
+}
 
 type pipe struct {
 	receiverResWriterCh chan http.ResponseWriter
@@ -17,6 +34,15 @@ type pipe struct {
 type PipingServer struct {
 	pathToPipe map[string]*pipe
 	mutex      *sync.Mutex
+}
+
+func isReservedPath(path string) bool {
+	for _, p := range reservedPaths {
+		if p == path {
+			return true
+		}
+	}
+	return false
 }
 
 func NewServer() *PipingServer {
@@ -49,6 +75,31 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 	// TODO: should close if either sender or receiver closes
 	switch req.Method {
 	case "GET":
+		switch path {
+		case reservedPathIndex:
+			resWriter.Header().Set("Content-Type", "text/html")
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.Write([]byte(indexPage))
+			return
+		case reservedPathVersion:
+			resWriter.Header().Set("Content-Type", "text/plain")
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.Write([]byte(fmt.Sprintf("%s in Go\n", version.Version)))
+			return
+		case reservedPathHelp:
+			resWriter.Header().Set("Content-Type", "text/plain")
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			// TODO: decide protocol properly
+			url := fmt.Sprintf("http://%s", req.Host)
+			resWriter.Write([]byte(helpPage(url)))
+			return
+		case reservedPathFaviconIco:
+			resWriter.WriteHeader(204)
+			return
+		case reservedPathRobotsTxt:
+			resWriter.WriteHeader(404)
+			return
+		}
 		pi := s.getPipe(path)
 		// If already get the path
 		if len(pi.receiverResWriterCh) != 0 {
@@ -63,6 +114,13 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 	case "POST":
 		fallthrough
 	case "PUT":
+		// If reserved path
+		if isReservedPath(path) {
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.WriteHeader(400)
+			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Cannot send to the reserved path '%s'. (e.g. '/mypath123')\n", path)))
+			return
+		}
 		pi := s.getPipe(path)
 		// If a sender is already connected
 		if !atomic.CompareAndSwapInt32(&pi.isSenderConnected, 0, 1) {
