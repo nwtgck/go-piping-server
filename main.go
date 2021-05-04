@@ -46,7 +46,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.Write([]byte("[ERROR] The number of receivers has reached limits.\n"))
 			return
 		}
-		go func() { pi.receiverResWriterCh <- resWriter }()
+		pi.receiverResWriterCh <- resWriter
 		// Wait for finish
 		<-pi.sendFinishedCh
 	case "POST":
