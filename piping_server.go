@@ -1,9 +1,8 @@
-package main
+package piping_server
 
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -80,11 +79,4 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		delete(s.pathToPipe, path)
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", req.URL.Path, req.Method)
-}
-
-func main() {
-	pipingServer := NewServer()
-	fmt.Println("Running...")
-	// TODO: Hard code port number
-	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(pipingServer.Handler)))
 }
