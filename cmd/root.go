@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/nwtgck/go-piping-server"
 	"github.com/nwtgck/go-piping-server/version"
@@ -13,6 +14,8 @@ var showsVersion bool
 var httpPort uint16
 var enableHttps bool
 var httpsPort uint16
+var keyPath string
+var crtPath string
 
 func init() {
 	cobra.OnInitialize()
@@ -20,6 +23,8 @@ func init() {
 	RootCmd.PersistentFlags().Uint16VarP(&httpPort, "http-port", "", 8080, "HTTP port")
 	RootCmd.PersistentFlags().BoolVarP(&enableHttps, "enable-https", "", false, "Enable HTTPS")
 	RootCmd.PersistentFlags().Uint16VarP(&httpsPort, "https-port", "", 8443, "HTTPS port")
+	RootCmd.PersistentFlags().StringVarP(&keyPath, "key-path", "", "", "Private key path")
+	RootCmd.PersistentFlags().StringVarP(&crtPath, "crt-path", "", "", "Certification path")
 }
 
 var RootCmd = &cobra.Command{
@@ -33,11 +38,23 @@ var RootCmd = &cobra.Command{
 			return nil
 		}
 		pipingServer := piping_server.NewServer()
-		fmt.Printf("Listening HTTP on %d...\n", httpPort)
-		err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), http.HandlerFunc(pipingServer.Handler))
-		if err != nil {
-			return err
+		errCh := make(chan error)
+		if enableHttps {
+			if keyPath == "" {
+				return errors.New("key-path should be specified")
+			}
+			if crtPath == "" {
+				return errors.New("crt-path should be specified")
+			}
+			go func() {
+				fmt.Printf("Listening HTTPS on %d...\n", httpsPort)
+				errCh <- http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), crtPath, keyPath, http.HandlerFunc(pipingServer.Handler))
+			}()
 		}
-		return nil
+		go func() {
+			fmt.Printf("Listening HTTP on %d...\n", httpPort)
+			errCh <- http.ListenAndServe(fmt.Sprintf(":%d", httpPort), http.HandlerFunc(pipingServer.Handler))
+		}()
+		return <-errCh
 	},
 }
