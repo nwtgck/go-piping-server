@@ -135,6 +135,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			return
 		}
 		receiverResWriter := <-pi.receiverResWriterCh
+		receiverResWriter.Header()["Content-Type"] = nil // not to sniff
 		transferHeaderIfExists(receiverResWriter, req, "Content-Type")
 		transferHeaderIfExists(receiverResWriter, req, "Content-Length")
 		transferHeaderIfExists(receiverResWriter, req, "Content-Disposition")
