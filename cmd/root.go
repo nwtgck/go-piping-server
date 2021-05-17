@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/nwtgck/go-piping-server"
 	"github.com/nwtgck/go-piping-server/version"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ var enableHttps bool
 var httpsPort uint16
 var keyPath string
 var crtPath string
+var enableHttp3 bool
 
 func init() {
 	cobra.OnInitialize()
@@ -25,6 +27,7 @@ func init() {
 	RootCmd.PersistentFlags().Uint16VarP(&httpsPort, "https-port", "", 8443, "HTTPS port")
 	RootCmd.PersistentFlags().StringVarP(&keyPath, "key-path", "", "", "Private key path")
 	RootCmd.PersistentFlags().StringVarP(&crtPath, "crt-path", "", "", "Certification path")
+	RootCmd.PersistentFlags().BoolVarP(&enableHttp3, "enable-http3", "", false, "Enable HTTP/3 (experimental)")
 }
 
 var RootCmd = &cobra.Command{
@@ -39,7 +42,7 @@ var RootCmd = &cobra.Command{
 		}
 		pipingServer := piping_server.NewServer()
 		errCh := make(chan error)
-		if enableHttps {
+		if enableHttps || enableHttp3 {
 			if keyPath == "" {
 				return errors.New("key-path should be specified")
 			}
@@ -50,6 +53,12 @@ var RootCmd = &cobra.Command{
 				fmt.Printf("Listening HTTPS on %d...\n", httpsPort)
 				errCh <- http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), crtPath, keyPath, http.HandlerFunc(pipingServer.Handler))
 			}()
+			if enableHttp3 {
+				go func() {
+					fmt.Printf("Listening HTTP/3 on %d...\n", httpsPort)
+					errCh <- http3.ListenAndServeQUIC(fmt.Sprintf(":%d", httpsPort), crtPath, keyPath, http.HandlerFunc(pipingServer.Handler))
+				}()
+			}
 		}
 		go func() {
 			fmt.Printf("Listening HTTP on %d...\n", httpPort)
