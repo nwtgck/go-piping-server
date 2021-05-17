@@ -118,9 +118,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		pi.receiverResWriterCh <- resWriter
 		// Wait for finish
 		<-pi.sendFinishedCh
-	case "POST":
-		fallthrough
-	case "PUT":
+	case "POST", "PUT":
 		// If reserved path
 		if isReservedPath(path) {
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
