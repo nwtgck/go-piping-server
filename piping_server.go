@@ -144,6 +144,17 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		io.Copy(receiverResWriter, req.Body)
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
+	case "OPTIONS":
+		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+		resWriter.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, OPTIONS")
+		resWriter.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Disposition")
+		resWriter.Header().Set("Access-Control-Max-Age", "86400")
+		resWriter.Header().Set("Content-Length", "0")
+		resWriter.WriteHeader(200)
+		return
+	default:
+		resWriter.WriteHeader(400)
+		resWriter.Write([]byte(fmt.Sprintf("[ERROR] Unsupported method: %s.\n", req.Method)))
 	}
 	fmt.Printf("Trasfering %s has finished in %s method.\n", req.URL.Path, req.Method)
 }
