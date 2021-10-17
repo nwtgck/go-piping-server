@@ -7,6 +7,7 @@ import (
 	"github.com/nwtgck/go-piping-server"
 	"github.com/nwtgck/go-piping-server/version"
 	"github.com/spf13/cobra"
+	"log"
 	"net/http"
 	"os"
 )
@@ -40,7 +41,8 @@ var RootCmd = &cobra.Command{
 			fmt.Println(version.Version)
 			return nil
 		}
-		pipingServer := piping_server.NewServer()
+		logger := log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds)
+		pipingServer := piping_server.NewServer(logger)
 		errCh := make(chan error)
 		if enableHttps || enableHttp3 {
 			if keyPath == "" {
@@ -50,18 +52,18 @@ var RootCmd = &cobra.Command{
 				return errors.New("crt-path should be specified")
 			}
 			go func() {
-				fmt.Printf("Listening HTTPS on %d...\n", httpsPort)
+				logger.Printf("Listening HTTPS on %d...\n", httpsPort)
 				errCh <- http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), crtPath, keyPath, http.HandlerFunc(pipingServer.Handler))
 			}()
 			if enableHttp3 {
 				go func() {
-					fmt.Printf("Listening HTTP/3 on %d...\n", httpsPort)
+					logger.Printf("Listening HTTP/3 on %d...\n", httpsPort)
 					errCh <- http3.ListenAndServeQUIC(fmt.Sprintf(":%d", httpsPort), crtPath, keyPath, http.HandlerFunc(pipingServer.Handler))
 				}()
 			}
 		}
 		go func() {
-			fmt.Printf("Listening HTTP on %d...\n", httpPort)
+			logger.Printf("Listening HTTP on %d...\n", httpPort)
 			errCh <- http.ListenAndServe(fmt.Sprintf(":%d", httpPort), http.HandlerFunc(pipingServer.Handler))
 		}()
 		return <-errCh

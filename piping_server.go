@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/nwtgck/go-piping-server/version"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -34,6 +35,7 @@ type pipe struct {
 type PipingServer struct {
 	pathToPipe map[string]*pipe
 	mutex      *sync.Mutex
+	logger     *log.Logger
 }
 
 func isReservedPath(path string) bool {
@@ -45,10 +47,11 @@ func isReservedPath(path string) bool {
 	return false
 }
 
-func NewServer() *PipingServer {
+func NewServer(logger *log.Logger) *PipingServer {
 	return &PipingServer{
 		pathToPipe: map[string]*pipe{},
 		mutex:      new(sync.Mutex),
+		logger:     logger,
 	}
 }
 
@@ -76,7 +79,7 @@ func transferHeaderIfExists(w http.ResponseWriter, req *http.Request, header str
 }
 
 func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request) {
-	fmt.Println(req.Method)
+	s.logger.Printf("%s %s", req.Method, req.URL)
 	path := req.URL.Path
 
 	// TODO: should close if either sender or receiver closes
@@ -156,5 +159,5 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		resWriter.WriteHeader(400)
 		resWriter.Write([]byte(fmt.Sprintf("[ERROR] Unsupported method: %s.\n", req.Method)))
 	}
-	fmt.Printf("Trasfering %s has finished in %s method.\n", req.URL.Path, req.Method)
+	s.logger.Printf("Transferring %s has finished in %s method.\n", req.URL.Path, req.Method)
 }
