@@ -29,7 +29,7 @@ var reservedPaths = [...]string{
 type pipe struct {
 	receiverResWriterCh chan http.ResponseWriter
 	sendFinishedCh      chan struct{}
-	isSenderConnected   int32  // NOTE: for atomic operation
+	isSenderConnected   uint32 // NOTE: for atomic operation
 	isTransferring      uint32 // NOTE: for atomic operation
 }
 
@@ -135,7 +135,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		}
 		pi := s.getPipe(path)
 		// If a sender is already connected
-		if !atomic.CompareAndSwapInt32(&pi.isSenderConnected, 0, 1) {
+		if !atomic.CompareAndSwapUint32(&pi.isSenderConnected, 0, 1) {
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			resWriter.WriteHeader(400)
 			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Another sender has been connected on '%s'.\n", path)))
