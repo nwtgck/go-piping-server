@@ -99,8 +99,11 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		case reservedPathHelp:
 			resWriter.Header().Set("Content-Type", "text/plain")
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
-			// TODO: decide protocol properly
-			url := fmt.Sprintf("http://%s", req.Host)
+			protocol := "http"
+			if req.TLS != nil {
+				protocol = "https"
+			}
+			url := fmt.Sprintf(protocol+"://%s", req.Host)
 			resWriter.Write([]byte(helpPage(url)))
 			return
 		case reservedPathFaviconIco:
