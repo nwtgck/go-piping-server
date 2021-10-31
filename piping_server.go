@@ -29,7 +29,8 @@ var reservedPaths = [...]string{
 type pipe struct {
 	receiverResWriterCh chan http.ResponseWriter
 	sendFinishedCh      chan struct{}
-	isSenderConnected   int32 // NOTE: for atomic operation
+	isSenderConnected   int32  // NOTE: for atomic operation
+	isTransferring      uint32 // NOTE: for atomic operation
 }
 
 type PipingServer struct {
@@ -114,8 +115,8 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			return
 		}
 		pi := s.getPipe(path)
-		// If already get the path
-		if len(pi.receiverResWriterCh) != 0 {
+		// If already get the path or transferring
+		if len(pi.receiverResWriterCh) != 0 || atomic.LoadUint32(&pi.isTransferring) == 1 {
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			resWriter.WriteHeader(400)
 			resWriter.Write([]byte("[ERROR] The number of receivers has reached limits.\n"))
@@ -141,6 +142,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			return
 		}
 		receiverResWriter := <-pi.receiverResWriterCh
+		atomic.StoreUint32(&pi.isTransferring, 1)
 		receiverResWriter.Header()["Content-Type"] = nil // not to sniff
 		transferHeaderIfExists(receiverResWriter, req, "Content-Type")
 		transferHeaderIfExists(receiverResWriter, req, "Content-Length")
