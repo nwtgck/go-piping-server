@@ -156,8 +156,15 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		transferHeaderIfExists(receiverResWriter, req, "Content-Type")
 		transferHeaderIfExists(receiverResWriter, req, "Content-Length")
 		transferHeaderIfExists(receiverResWriter, req, "Content-Disposition")
+		xPipingValues := req.Header.Values("X-Piping")
+		if len(xPipingValues) != 0 {
+			receiverResWriter.Header()["X-Piping"] = xPipingValues
+		}
+		transferHeaderIfExists(receiverResWriter, req, "X-Piping")
 		receiverResWriter.Header().Set("Access-Control-Allow-Origin", "*")
-		receiverResWriter.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		if len(xPipingValues) != 0 {
+			receiverResWriter.Header().Set("Access-Control-Expose-Headers", "X-Piping")
+		}
 		receiverResWriter.Header().Set("X-Robots-Tag", "none")
 		io.Copy(receiverResWriter, req.Body)
 		pi.sendFinishedCh <- struct{}{}
@@ -165,7 +172,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 	case "OPTIONS":
 		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 		resWriter.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, OPTIONS")
-		resWriter.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Disposition")
+		resWriter.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Disposition, X-Piping")
 		resWriter.Header().Set("Access-Control-Max-Age", "86400")
 		resWriter.Header().Set("Content-Length", "0")
 		resWriter.WriteHeader(200)
