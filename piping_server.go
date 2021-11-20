@@ -185,6 +185,8 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			return
 		}
 		receiverResWriter := <-pi.receiverResWriterCh
+		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+
 		atomic.StoreUint32(&pi.isTransferring, 1)
 		transferHeader, transferBody := getTransferHeaderAndBody(req)
 		receiverResWriter.Header()["Content-Type"] = nil // not to sniff
