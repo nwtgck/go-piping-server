@@ -6,7 +6,7 @@ import (
 	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/nwtgck/go-piping-server"
 	"github.com/nwtgck/go-piping-server/version"
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"log"
@@ -15,30 +15,27 @@ import (
 )
 
 var showsVersion bool
-var httpPort uint16
+var httpPort uint
 var enableHttps bool
-var httpsPort uint16
+var httpsPort uint
 var keyPath string
 var crtPath string
 var enableHttp3 bool
 
-func init() {
-	cobra.OnInitialize()
-	RootCmd.PersistentFlags().BoolVarP(&showsVersion, "version", "", false, "show version")
-	RootCmd.PersistentFlags().Uint16VarP(&httpPort, "http-port", "", 8080, "HTTP port")
-	RootCmd.PersistentFlags().BoolVarP(&enableHttps, "enable-https", "", false, "Enable HTTPS")
-	RootCmd.PersistentFlags().Uint16VarP(&httpsPort, "https-port", "", 8443, "HTTPS port")
-	RootCmd.PersistentFlags().StringVarP(&keyPath, "key-path", "", "", "Private key path")
-	RootCmd.PersistentFlags().StringVarP(&crtPath, "crt-path", "", "", "Certification path")
-	RootCmd.PersistentFlags().BoolVarP(&enableHttp3, "enable-http3", "", false, "Enable HTTP/3 (experimental)")
-}
-
-var RootCmd = &cobra.Command{
-	Use:          os.Args[0],
-	Short:        "piping-server",
-	Long:         "Infinitely transfer between any device over pure HTTP",
-	SilenceUsage: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+var App = &cli.App{
+	Usage: "Infinitely transfer between any device over pure HTTP",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{Name: "version", Usage: "Show version", Destination: &showsVersion},
+		&cli.UintFlag{Name: "http-port", Usage: "HTTP port", Value: 8080, Destination: &httpPort},
+		&cli.BoolFlag{Name: "enable-https", Usage: "Enable HTTPS", Value: false, Destination: &enableHttps},
+		&cli.UintFlag{Name: "https-port", Usage: "HTTPS port", Value: 8443, Destination: &httpsPort},
+		&cli.StringFlag{Name: "key-path", Usage: "Private key path", Destination: &keyPath},
+		&cli.StringFlag{Name: "crt-path", Usage: "Certification path", Destination: &crtPath},
+		&cli.BoolFlag{Name: "enable-http3", Usage: "Enable HTTP/3 (experimental)", Value: false, Destination: &enableHttp3},
+	},
+	// NOTE: No `Version: version.Version` because it adds `-v` short flag,
+	HideHelpCommand: true,
+	Action: func(context *cli.Context) error {
 		if showsVersion {
 			fmt.Println(version.Version)
 			return nil
@@ -48,10 +45,10 @@ var RootCmd = &cobra.Command{
 		errCh := make(chan error)
 		if enableHttps || enableHttp3 {
 			if keyPath == "" {
-				return errors.New("key-path should be specified")
+				return errors.New("--key-path should be specified")
 			}
 			if crtPath == "" {
-				return errors.New("crt-path should be specified")
+				return errors.New("--crt-path should be specified")
 			}
 			go func() {
 				logger.Printf("Listening HTTPS on %d...\n", httpsPort)
