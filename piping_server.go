@@ -5,13 +5,17 @@ import (
 	"github.com/nwtgck/go-piping-server/version"
 	"io"
 	"log"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"sync"
 	"sync/atomic"
 )
 
 const (
 	reservedPathIndex      = "/"
+	reservedPathNoScript   = "/noscript"
 	reservedPathVersion    = "/version"
 	reservedPathHelp       = "/help"
 	reservedPathFaviconIco = "/favicon.ico"
@@ -25,6 +29,8 @@ var reservedPaths = [...]string{
 	reservedPathFaviconIco,
 	reservedPathRobotsTxt,
 }
+
+const noscriptPathQueryParameterName = "path"
 
 type pipe struct {
 	receiverResWriterCh chan http.ResponseWriter
@@ -72,11 +78,26 @@ func (s *PipingServer) getPipe(path string) *pipe {
 	return s.pathToPipe[path]
 }
 
-func transferHeaderIfExists(w http.ResponseWriter, req *http.Request, header string) {
-	values := req.Header.Values(header)
+func transferHeaderIfExists(w http.ResponseWriter, reqHeader textproto.MIMEHeader, header string) {
+	values := reqHeader.Values(header)
 	if len(values) == 1 {
 		w.Header().Add(header, values[0])
 	}
+}
+
+func getTransferHeaderAndBody(req *http.Request) (textproto.MIMEHeader, io.ReadCloser) {
+	mediaType, params, mediaTypeParseErr := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	// If multipart upload
+	if mediaTypeParseErr == nil && mediaType == "multipart/form-data" {
+		multipartReader := multipart.NewReader(req.Body, params["boundary"])
+		part, err := multipartReader.NextPart()
+		if err != nil {
+			// Return normal if multipart error
+			return textproto.MIMEHeader(req.Header), req.Body
+		}
+		return part.Header, part
+	}
+	return textproto.MIMEHeader(req.Header), req.Body
 }
 
 func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request) {
@@ -91,6 +112,11 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.Header().Set("Content-Type", "text/html")
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			resWriter.Write([]byte(indexPage))
+			return
+		case reservedPathNoScript:
+			resWriter.Header().Set("Content-Type", "text/html")
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.Write([]byte(noScriptHtml(req.URL.Query().Get(noscriptPathQueryParameterName))))
 			return
 		case reservedPathVersion:
 			resWriter.Header().Set("Content-Type", "text/plain")
@@ -152,21 +178,21 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		}
 		receiverResWriter := <-pi.receiverResWriterCh
 		atomic.StoreUint32(&pi.isTransferring, 1)
+		transferHeader, transferBody := getTransferHeaderAndBody(req)
 		receiverResWriter.Header()["Content-Type"] = nil // not to sniff
-		transferHeaderIfExists(receiverResWriter, req, "Content-Type")
-		transferHeaderIfExists(receiverResWriter, req, "Content-Length")
-		transferHeaderIfExists(receiverResWriter, req, "Content-Disposition")
+		transferHeaderIfExists(receiverResWriter, transferHeader, "Content-Type")
+		transferHeaderIfExists(receiverResWriter, transferHeader, "Content-Length")
+		transferHeaderIfExists(receiverResWriter, transferHeader, "Content-Disposition")
 		xPipingValues := req.Header.Values("X-Piping")
 		if len(xPipingValues) != 0 {
 			receiverResWriter.Header()["X-Piping"] = xPipingValues
 		}
-		transferHeaderIfExists(receiverResWriter, req, "X-Piping")
 		receiverResWriter.Header().Set("Access-Control-Allow-Origin", "*")
 		if len(xPipingValues) != 0 {
 			receiverResWriter.Header().Set("Access-Control-Expose-Headers", "X-Piping")
 		}
 		receiverResWriter.Header().Set("X-Robots-Tag", "none")
-		io.Copy(receiverResWriter, req.Body)
+		io.Copy(receiverResWriter, transferBody)
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
 	case "OPTIONS":

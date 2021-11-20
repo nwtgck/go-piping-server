@@ -3,9 +3,12 @@ package piping_server
 import (
 	"fmt"
 	"github.com/nwtgck/go-piping-server/version"
+	"html"
 )
 
-var indexPage = fmt.Sprintf(`<!DOCTYPE html>
+var indexPage = fmt.Sprintf(
+	// language=html
+	`<!DOCTYPE html>
 <html lang="en">
 <head>
   <title>Piping Server in Go</title>
@@ -39,6 +42,7 @@ var indexPage = fmt.Sprintf(`<!DOCTYPE html>
 <div id="message"></div>
 <hr>
 <a href="https://piping-ui.org">Piping UI for Web</a><br>
+<a href="%s">Transfer without JavaScript</a><br>
 <a href="https://github.com/nwtgck/piping-server#readme">Command-line usage</a><br>
 <script>
   // Toggle input mode: file or text
@@ -113,7 +117,7 @@ var indexPage = fmt.Sprintf(`<!DOCTYPE html>
 </script>
 </body>
 </html>
-`, version.Version)
+`, version.Version, reservedPathNoScript[1:])
 
 func helpPage(url string) string {
 	return fmt.Sprintf(`Help for Piping Server %s
@@ -135,4 +139,47 @@ cat myfile | openssl aes-256-cbc | curl -T - %s/mypath
 ## Get
 curl %s/mypath | openssl aes-256-cbc -d
 `, version.Version, url, url, url, url, url, url, url)
+}
+
+func noScriptHtml(path string) string {
+	escapedPath := html.EscapeString(path)
+	disabled := ""
+	if path == "" {
+		disabled = "disabled"
+	}
+	return fmt.Sprintf(
+		// language=html
+		`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>File transfer without JavaScript</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    h3 {
+      margin-top: 2em;
+      margin-bottom: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <h2>File transfer without JavaScript</h2>
+  <form method="GET" action="%s">
+    <h3>Step 1: Specify path</h3>
+    <input name="%s" value="%s">
+    <input type="submit" value="Apply">
+  </form>
+  <form method="POST" action="%s" enctype="multipart/form-data">
+    <h3>Step 2: Choose a file</h3>
+    <input type="file" name="input_file" %s>
+    <h3>Step 3: Send</h3>
+    <input type="submit" value="Send" %s>
+  </form>
+  <hr>
+  Piping Server:
+  <a href="https://github.com/nwtgck/go-piping-server">
+    https://github.com/nwtgck/go-piping-server
+  </a><br>
+</body>
+</html>
+`, reservedPathNoScript, noscriptPathQueryParameterName, escapedPath, escapedPath, disabled, disabled)
 }
