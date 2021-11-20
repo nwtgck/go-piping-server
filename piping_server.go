@@ -133,6 +133,15 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Cannot send to the reserved path '%s'. (e.g. '/mypath123')\n", path)))
 			return
 		}
+		// Notify that Content-Range is not supported
+		// In the future, resumable upload using Content-Range might be supported
+		// ref: https://github.com/httpwg/http-core/pull/653
+		if len(req.Header.Values("Content-Range")) != 0 {
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.WriteHeader(400)
+			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Content-Range is not supported for now in %s\n", req.Method)))
+			return
+		}
 		pi := s.getPipe(path)
 		// If a sender is already connected
 		if !atomic.CompareAndSwapUint32(&pi.isSenderConnected, 0, 1) {
