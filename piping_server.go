@@ -140,6 +140,14 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.WriteHeader(404)
 			return
 		}
+		// If the receiver requests Service Worker registration
+		// (from: https://speakerdeck.com/masatokinugawa/pwa-study-sw?slide=32)
+		if req.Header.Get("Service-Worker") == "script" {
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.WriteHeader(400)
+			resWriter.Write([]byte("[ERROR] Service Worker registration is rejected.\n"))
+			return
+		}
 		pi := s.getPipe(path)
 		// If already get the path or transferring
 		if len(pi.receiverResWriterCh) != 0 || atomic.LoadUint32(&pi.isTransferring) == 1 {
