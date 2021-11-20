@@ -171,8 +171,10 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		resWriter.WriteHeader(200)
 		return
 	default:
-		resWriter.WriteHeader(400)
+		resWriter.WriteHeader(405)
+		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 		resWriter.Write([]byte(fmt.Sprintf("[ERROR] Unsupported method: %s.\n", req.Method)))
+		return
 	}
 	s.logger.Printf("Transferring %s has finished in %s method.\n", req.URL.Path, req.Method)
 }
