@@ -149,6 +149,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		transferHeaderIfExists(receiverResWriter, req, "Content-Disposition")
 		receiverResWriter.Header().Set("Access-Control-Allow-Origin", "*")
 		receiverResWriter.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		receiverResWriter.Header().Set("X-Robots-Tag", "none")
 		io.Copy(receiverResWriter, req.Body)
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
