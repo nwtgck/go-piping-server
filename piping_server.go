@@ -12,6 +12,7 @@ import (
 
 const (
 	reservedPathIndex      = "/"
+	reservedPathNoScript   = "/noscript"
 	reservedPathVersion    = "/version"
 	reservedPathHelp       = "/help"
 	reservedPathFaviconIco = "/favicon.ico"
@@ -25,6 +26,8 @@ var reservedPaths = [...]string{
 	reservedPathFaviconIco,
 	reservedPathRobotsTxt,
 }
+
+const noscriptPathQueryParameterName = "path"
 
 type pipe struct {
 	receiverResWriterCh chan http.ResponseWriter
@@ -91,6 +94,11 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.Header().Set("Content-Type", "text/html")
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			resWriter.Write([]byte(indexPage))
+			return
+		case reservedPathNoScript:
+			resWriter.Header().Set("Content-Type", "text/html")
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.Write([]byte(noScriptHtml(req.URL.Query().Get(noscriptPathQueryParameterName))))
 			return
 		case reservedPathVersion:
 			resWriter.Header().Set("Content-Type", "text/plain")
