@@ -80,7 +80,7 @@ func transferHeaderIfExists(w http.ResponseWriter, req *http.Request, header str
 }
 
 func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request) {
-	s.logger.Printf("%s %s", req.Method, req.URL)
+	s.logger.Printf("%s %s %s", req.Method, req.URL, req.Proto)
 	path := req.URL.Path
 
 	// TODO: should close if either sender or receiver closes
