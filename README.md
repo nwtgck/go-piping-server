@@ -22,3 +22,22 @@ Get more executables in the [releases](https://github.com/nwtgck/go-piping-serve
 ```bash
 docker run -p 8181:8080 nwtgck/go-piping-server
 ```
+
+## Server options
+
+```
+Infinitely transfer between any device over pure HTTP
+
+Usage:
+  go-piping-server [flags]
+
+Flags:
+      --crt-path string     Certification path
+      --enable-http3        Enable HTTP/3 (experimental)
+      --enable-https        Enable HTTPS
+  -h, --help                help for go-piping-server
+      --http-port uint16    HTTP port (default 8080)
+      --https-port uint16   HTTPS port (default 8443)
+      --key-path string     Private key path
+      --version             show version
+```
