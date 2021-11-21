@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -104,42 +105,55 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 	s.logger.Printf("%s %s %s", req.Method, req.URL, req.Proto)
 	path := req.URL.Path
 
-	// TODO: should close if either sender or receiver closes
-	switch req.Method {
-	case "GET":
+	if req.Method == "GET" || req.Method == "HEAD" {
 		switch path {
 		case reservedPathIndex:
+			indexPageBytes := []byte(indexPage)
 			resWriter.Header().Set("Content-Type", "text/html")
+			resWriter.Header().Set("Content-Length", strconv.Itoa(len(indexPageBytes)))
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
-			resWriter.Write([]byte(indexPage))
+			resWriter.Write(indexPageBytes)
 			return
 		case reservedPathNoScript:
+			noScriptHtmlBytes := []byte(noScriptHtml(req.URL.Query().Get(noscriptPathQueryParameterName)))
 			resWriter.Header().Set("Content-Type", "text/html")
+			resWriter.Header().Set("Content-Length", strconv.Itoa(len(noScriptHtmlBytes)))
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
-			resWriter.Write([]byte(noScriptHtml(req.URL.Query().Get(noscriptPathQueryParameterName))))
+			resWriter.Write(noScriptHtmlBytes)
 			return
 		case reservedPathVersion:
+			versionBytes := []byte(fmt.Sprintf("%s in Go\n", version.Version))
 			resWriter.Header().Set("Content-Type", "text/plain")
+			resWriter.Header().Set("Content-Length", strconv.Itoa(len(versionBytes)))
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
-			resWriter.Write([]byte(fmt.Sprintf("%s in Go\n", version.Version)))
+			resWriter.Write(versionBytes)
 			return
 		case reservedPathHelp:
-			resWriter.Header().Set("Content-Type", "text/plain")
-			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			protocol := "http"
 			if req.TLS != nil {
 				protocol = "https"
 			}
 			url := fmt.Sprintf(protocol+"://%s", req.Host)
-			resWriter.Write([]byte(helpPage(url)))
+			helpPageBytes := []byte(helpPage(url))
+			resWriter.Header().Set("Content-Type", "text/plain")
+			resWriter.Header().Set("Content-Length", strconv.Itoa(len(helpPageBytes)))
+			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			resWriter.Write(helpPageBytes)
 			return
 		case reservedPathFaviconIco:
+			resWriter.Header().Set("Content-Length", "0")
 			resWriter.WriteHeader(204)
 			return
 		case reservedPathRobotsTxt:
+			resWriter.Header().Set("Content-Length", "0")
 			resWriter.WriteHeader(404)
 			return
 		}
+	}
+
+	// TODO: should close if either sender or receiver closes
+	switch req.Method {
+	case "GET":
 		// If the receiver requests Service Worker registration
 		// (from: https://speakerdeck.com/masatokinugawa/pwa-study-sw?slide=32)
 		if req.Header.Get("Service-Worker") == "script" {
