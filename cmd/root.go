@@ -48,10 +48,10 @@ var RootCmd = &cobra.Command{
 		errCh := make(chan error)
 		if enableHttps || enableHttp3 {
 			if keyPath == "" {
-				return errors.New("key-path should be specified")
+				return errors.New("--key-path should be specified")
 			}
 			if crtPath == "" {
-				return errors.New("crt-path should be specified")
+				return errors.New("--crt-path should be specified")
 			}
 			go func() {
 				logger.Printf("Listening HTTPS on %d...\n", httpsPort)
