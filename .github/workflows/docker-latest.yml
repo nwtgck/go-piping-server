@@ -8,8 +8,6 @@ on:
       - 'v*'
   release:
     types: [published]
-  schedule:
-    - cron: '*/30 * * * *'
 
 jobs:
   build_and_push:
