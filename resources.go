@@ -179,6 +179,7 @@ func noScriptHtml(path string) string {
   <a href="https://github.com/nwtgck/go-piping-server">
     https://github.com/nwtgck/go-piping-server
   </a><br>
+  <a href=".">Top page</a><br>
 </body>
 </html>
 `, reservedPathNoScript, noscriptPathQueryParameterName, escapedPath, escapedPath, disabled, disabled)

@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 )
 
 var showsVersion bool
@@ -40,18 +41,19 @@ var RootCmd = &cobra.Command{
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if showsVersion {
-			fmt.Println(version.Version)
+			fmt.Printf("%s (%s)\n", version.Version, runtime.Version())
 			return nil
 		}
 		logger := log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds)
+		logger.Printf("Piping Server %s (%s)", version.Version, runtime.Version())
 		pipingServer := piping_server.NewServer(logger)
 		errCh := make(chan error)
 		if enableHttps || enableHttp3 {
 			if keyPath == "" {
-				return errors.New("key-path should be specified")
+				return errors.New("--key-path should be specified")
 			}
 			if crtPath == "" {
-				return errors.New("crt-path should be specified")
+				return errors.New("--crt-path should be specified")
 			}
 			go func() {
 				logger.Printf("Listening HTTPS on %d...\n", httpsPort)

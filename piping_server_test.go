@@ -133,6 +133,26 @@ func TestRobotsTxt(t *testing.T) {
 	assert.Equal(t, len(bytes), 0)
 }
 
+func TestHeadMethodInReservedPaths(t *testing.T) {
+	server, url := serve(t)
+	defer server.Shutdown(context.Background())
+
+	for _, path := range reservedPaths {
+		headRes, err := http.Head(url + path)
+		if err != nil {
+			t.Fatal(t)
+		}
+		getRes, err := http.Get(url + path)
+		if err != nil {
+			t.Fatal(t)
+		}
+		headRes.Header.Del("Date")
+		getRes.Header.Del("Date")
+		assert.Equal(t, headRes.StatusCode, getRes.StatusCode)
+		assert.DeepEqual(t, headRes.Header, getRes.Header)
+	}
+}
+
 func TestPreflightRequest(t *testing.T) {
 	server, url := serve(t)
 	defer server.Shutdown(context.Background())
