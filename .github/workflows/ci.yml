@@ -15,6 +15,66 @@ jobs:
         with:
           go-version: 1.16
       - name: Build
-        run: CGO_ENABLED=0 go build -o piping-server
+        run: CGO_ENABLED=0 go build -o go-piping-server main/main.go
       - name: Test
         run: go test -v ./...
+
+  linux_operational_test:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: Build
+        run: CGO_ENABLED=0 go build -o go-piping-server main/main.go
+      - name: Operational test
+        run: |
+          set -xeu
+          # Create certificates
+          mkdir ssl_certs && cd ssl_certs && openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -sha256 -nodes --subj '/CN=localhost/' && cd -
+          # Run a server
+          ./go-piping-server --http-port=8181 --enable-https --https-port=8443 --crt-path=./ssl_certs/server.crt --key-path=./ssl_certs/server.key &> ./piping-server.log &
+          # Get server PID
+          server_pid=$!
+          sleep 3
+
+          # Transfer data over HTTP
+          echo "hello, world" | curl -T - localhost:8181/mypath &
+          diff <(echo "hello, world") <(curl localhost:8181/mypath)
+          # Make a large random file
+          dd if=/dev/urandom iflag=count_bytes count=500M bs=1M of=/tmp/500M.dat
+          # Transfer large data over HTTP
+          cat /tmp/500M.dat | curl -T - localhost:8181/mypath &
+          diff <(cat /tmp/500M.dat) <(curl localhost:8181/mypath)
+          rm /tmp/500M.dat
+
+          # Transfer data over HTTPS
+          echo "hello, world with HTTPS" | curl -kT - https://localhost:8443/mypath2 &
+          diff <(echo "hello, world with HTTPS") <(curl -k https://localhost:8443/mypath2)
+          # Make a large random file
+          dd if=/dev/urandom iflag=count_bytes count=500M bs=1M of=/tmp/500M.dat
+          # Transfer large data over HTTPS
+          cat /tmp/500M.dat | curl -kT - https://localhost:8443/mypath2 &
+          diff <(cat /tmp/500M.dat) <(curl -k https://localhost:8443/mypath2)
+          rm /tmp/500M.dat
+
+          # HTTP/2 support
+          (echo hello | curl -ksST- https://localhost:8443/mypath3 -o /dev/null -w '%{http_version}:%{http_code}\n' > /tmp/http2_post.txt) &
+          diff <(echo '2:200') <(curl -ksS https://localhost:8443/mypath3 -o /dev/null -w '%{http_version}:%{http_code}\n')
+          diff <(echo '2:200') /tmp/http2_post.txt
+
+          # Transfer data using multipart
+          # Make a large random file
+          dd if=/dev/urandom iflag=count_bytes count=500M bs=1M of=/tmp/500M.dat
+          # Transfer large data over HTTP
+          curl -F myfile=@/tmp/500M.dat localhost:8181/mypath3 &
+          diff <(cat /tmp/500M.dat) <(curl localhost:8181/mypath3)
+          rm /tmp/500M.dat
+          
+          # Stop the server
+          kill $server_pid
+          
+          # Print server's log
+          cat ./piping-server.log
