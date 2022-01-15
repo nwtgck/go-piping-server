@@ -44,6 +44,7 @@ var RootCmd = &cobra.Command{
 			return nil
 		}
 		logger := log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds)
+		logger.Printf("Piping Server (Go) %s", version.Version)
 		pipingServer := piping_server.NewServer(logger)
 		errCh := make(chan error)
 		if enableHttps || enableHttp3 {
