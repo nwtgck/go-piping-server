@@ -33,7 +33,7 @@ jobs:
           core.setOutput('docker-push', shouldPush + "");
           core.setOutput('docker-image-names', shouldPush ? dockerImageNames.join(",") : "dummy_image_name_not_to_push");
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
     - name: Login to DockerHub
