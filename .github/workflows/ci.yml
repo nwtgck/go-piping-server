@@ -2,6 +2,9 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  PIPING_SERVER_CHECK_VERSION: 0.1.0-SNAPSHOT
+
 jobs:
   build:
     runs-on: ubuntu-18.04
@@ -78,3 +81,6 @@ jobs:
           
           # Print server's log
           cat ./piping-server.log
+      - name: Install piping-server-check
+        run: cd /tmp && wget -O piping-server-check.deb https://github.com/nwtgck/piping-server-check/releases/download/v${PIPING_SERVER_CHECK_VERSION}/piping-server-check-${PIPING_SERVER_CHECK_VERSION}-linux-amd64.deb && dpkg -i piping-server-check.deb
+      - run: piping-server-check --help
