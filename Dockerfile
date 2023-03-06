@@ -1,5 +1,5 @@
 # NOTE: base platform is always linux/amd64 because go can cross-build
-FROM --platform=linux/amd64 golang:1.16
+FROM --platform=linux/amd64 golang:1.19
 
 ARG TARGETPLATFORM
 
