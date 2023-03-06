@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [push]
 
 env:
   PIPING_SERVER_CHECK_VERSION: 0.2.2
