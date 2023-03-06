@@ -6,7 +6,7 @@ require (
 	github.com/lucas-clemente/quic-go v0.31.1
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/net v0.8.0
-	gotest.tools/v3 v3.2.0
+	gotest.tools/v3 v3.4.0
 )
 
 require (
