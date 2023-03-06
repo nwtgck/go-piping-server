@@ -3,7 +3,7 @@ name: CI
 on: [push]
 
 env:
-  PIPING_SERVER_CHECK_VERSION: 0.2.2
+  PIPING_SERVER_CHECK_VERSION: 0.5.0
 
 jobs:
   build:
@@ -22,8 +22,8 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-  linux_operational_test:
-    runs-on: ubuntu-18.04
+  linux_piping_server_check:
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Set up Go 1.x
@@ -34,38 +34,11 @@ jobs:
         run: CGO_ENABLED=0 go build -o go-piping-server main/main.go
       - name: Create certificates
         run: cd /tmp && mkdir ssl_certs && cd ssl_certs && openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -sha256 -nodes --subj '/CN=localhost/' && cd -
-      - name: Operational test
-        run: |
-          set -xeu
-          # Run a server
-          ./go-piping-server --http-port=8181 --enable-https --https-port=8443 --crt-path=/tmp/ssl_certs/server.crt --key-path=/tmp/ssl_certs/server.key &> ./piping-server.log &
-          # Get server PID
-          server_pid=$!
-          sleep 3
-
-          # HTTP/2 support
-          (echo hello | curl -ksST- https://localhost:8443/mypath3 -o /dev/null -w '%{http_version}:%{http_code}\n' > /tmp/http2_post.txt) &
-          diff <(echo '2:200') <(curl -ksS https://localhost:8443/mypath3 -o /dev/null -w '%{http_version}:%{http_code}\n')
-          diff <(echo '2:200') /tmp/http2_post.txt
-
-          # Transfer data using multipart
-          # Make a large random file
-          dd if=/dev/urandom iflag=count_bytes count=500M bs=1M of=/tmp/500M.dat
-          # Transfer large data over HTTP
-          curl -F myfile=@/tmp/500M.dat localhost:8181/mypath3 &
-          diff <(cat /tmp/500M.dat) <(curl localhost:8181/mypath3)
-          rm /tmp/500M.dat
-
-          # Stop the server
-          kill $server_pid
-
-          # Print server's log
-          cat ./piping-server.log
       - name: Install piping-server-check
         run: cd /tmp && wget -O piping-server-check.deb https://github.com/nwtgck/piping-server-check/releases/download/v${PIPING_SERVER_CHECK_VERSION}/piping-server-check-${PIPING_SERVER_CHECK_VERSION}-linux-amd64.deb && sudo dpkg -i piping-server-check.deb
       - name: piping-server-check
         # sometimes .same_path_sender_rejection subcheck fails (why?)
-        run: piping-server-check --http1.0 --http1.0-tls --http1.1 --http1.1-tls --h2c --h2 --h3 --tls-skip-verify --concurrency 100 --compromise post_first_byte_by_byte_streaming --compromise post_first.same_path_sender_rejection --compromise put.same_path_sender_rejection --server-command='mkdir -p /tmp/logs && ./go-piping-server --http-port=$HTTP_PORT --enable-https --enable-http3 --https-port=$HTTPS_PORT --crt-path=/tmp/ssl_certs/server.crt --key-path=/tmp/ssl_certs/server.key 2>&1 | tee /tmp/logs/$(date "+%s%3N").log > /dev/stderr' --transfer-speed-byte $((1024 * 1024 * 1024 * 1024)) --transfer-span 3s --transfer-span 10s
+        run: piping-server-check --http1.0 --http1.0-tls --http1.1 --http1.1-tls --h2c --h2 --h3 --tls-skip-verify --concurrency 100 --compromise post_first_byte_by_byte_streaming --compromise post_first.same_path_sender_rejection --compromise put.same_path_sender_rejection --compromise http1.0/multipart_form_data --compromise http1.0-tls/multipart_form_data --server-command='mkdir -p /tmp/logs && ./go-piping-server --http-port=$HTTP_PORT --enable-https --enable-http3 --https-port=$HTTPS_PORT --crt-path=/tmp/ssl_certs/server.crt --key-path=/tmp/ssl_certs/server.key 2>&1 | tee /tmp/logs/$(date "+%s%3N").log > /dev/stderr' --transfer-speed-byte $((1024 * 1024 * 1024 * 1024)) --transfer-span 3s --transfer-span 10s
         timeout-minutes: 1
       - name: Show server logs from piping-server-check
         run: cat /tmp/logs/*
