@@ -216,7 +216,8 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			receiverResWriter.Header().Set("Access-Control-Expose-Headers", "X-Piping")
 		}
 		receiverResWriter.Header().Set("X-Robots-Tag", "none")
-		io.Copy(receiverResWriter, transferBody)
+		receiverResWriteFlusher := NewWriteFlusherIfPossible(receiverResWriter)
+		io.Copy(receiverResWriteFlusher, transferBody)
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
 	case "OPTIONS":
@@ -234,4 +235,25 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		return
 	}
 	s.logger.Printf("Transferring %s has finished in %s method.\n", req.URL.Path, req.Method)
+}
+
+type WriteFlusher struct {
+	writer  io.Writer
+	flusher http.Flusher
+}
+
+func NewWriteFlusherIfPossible(w http.ResponseWriter) io.Writer {
+	if f, ok := w.(http.Flusher); ok {
+		return &WriteFlusher{writer: w, flusher: f}
+	}
+	return w
+}
+
+func (f *WriteFlusher) Write(p []byte) (int, error) {
+	n, err := f.writer.Write(p)
+	if err != nil {
+		return n, err
+	}
+	f.flusher.Flush()
+	return n, err
 }
