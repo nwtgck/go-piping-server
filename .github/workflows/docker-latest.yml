@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Create Docker image names
       id: create-docker-image-names
-      uses: actions/github-script@v5
+      uses: actions/github-script@v6
       with:
         # language=js
         script: |
