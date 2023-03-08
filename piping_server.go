@@ -198,7 +198,18 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Another sender has been connected on '%s'.\n", path)))
 			return
 		}
+
+		contentLength := req.ContentLength
+		// NOTE: `req.ContentLength = 0` is a workaround for full duplex
+		// Replace with https://github.com/golang/go/blob/457fd1d52d17fc8e73d4890150eadab3128de64d/src/net/http/responsecontroller.go#L119-L141 in the future
+		req.ContentLength = 0
 		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+		resWriter.WriteHeader(200)
+		if f, ok := resWriter.(http.Flusher); ok {
+			f.Flush()
+		}
+		req.ContentLength = contentLength
+
 		resWriteFlusher := NewWriteFlusherIfPossible(resWriter)
 		if _, err := resWriteFlusher.Write([]byte("[INFO] Waiting for 1 receiver(s)...\n")); err != nil {
 			return
