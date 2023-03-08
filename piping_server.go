@@ -195,12 +195,40 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		if !atomic.CompareAndSwapUint32(&pi.isSenderConnected, 0, 1) {
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			resWriter.WriteHeader(400)
+			reqContentLength := req.ContentLength
+			// NOTE: `req.ContentLength = 0` is a workaround for full duplex
+			// Replace with https://github.com/golang/go/blob/457fd1d52d17fc8e73d4890150eadab3128de64d/src/net/http/responsecontroller.go#L119-L141 in the future
+			req.ContentLength = 0
+			if f, ok := resWriter.(http.Flusher); ok {
+				f.Flush()
+			}
+			req.ContentLength = reqContentLength
 			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Another sender has been connected on '%s'.\n", path)))
 			return
 		}
-		receiverResWriter := <-pi.receiverResWriterCh
-		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 
+		contentLength := req.ContentLength
+		// NOTE: `req.ContentLength = 0` is a workaround for full duplex
+		// Replace with https://github.com/golang/go/blob/457fd1d52d17fc8e73d4890150eadab3128de64d/src/net/http/responsecontroller.go#L119-L141 in the future
+		req.ContentLength = 0
+		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
+		resWriter.WriteHeader(200)
+		if f, ok := resWriter.(http.Flusher); ok {
+			f.Flush()
+		}
+		req.ContentLength = contentLength
+
+		resWriteFlusher := NewWriteFlusherIfPossible(resWriter)
+		if _, err := resWriteFlusher.Write([]byte("[INFO] Waiting for 1 receiver(s)...\n")); err != nil {
+			return
+		}
+		receiverResWriter := <-pi.receiverResWriterCh
+		if _, err := resWriteFlusher.Write([]byte("[INFO] A receiver was connected.\n")); err != nil {
+			return
+		}
+		if _, err := resWriteFlusher.Write([]byte("[INFO] Start sending to 1 receiver(s)!\n")); err != nil {
+			return
+		}
 		atomic.StoreUint32(&pi.isTransferring, 1)
 		transferHeader, transferBody := getTransferHeaderAndBody(req)
 		receiverResWriter.Header()["Content-Type"] = nil // not to sniff
@@ -217,7 +245,12 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		}
 		receiverResWriter.Header().Set("X-Robots-Tag", "none")
 		receiverResWriteFlusher := NewWriteFlusherIfPossible(receiverResWriter)
-		io.Copy(receiverResWriteFlusher, transferBody)
+		if _, err := io.Copy(receiverResWriteFlusher, transferBody); err != nil {
+			return
+		}
+		if _, err := resWriteFlusher.Write([]byte("[INFO] Sent successfully!\n")); err != nil {
+			return
+		}
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
 	case "OPTIONS":

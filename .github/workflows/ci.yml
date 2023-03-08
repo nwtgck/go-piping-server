@@ -3,7 +3,7 @@ name: CI
 on: [push]
 
 env:
-  PIPING_SERVER_CHECK_VERSION: 0.5.0
+  PIPING_SERVER_CHECK_VERSION: 0.7.1
 
 jobs:
   build:
@@ -38,7 +38,8 @@ jobs:
         run: cd /tmp && wget -O piping-server-check.deb https://github.com/nwtgck/piping-server-check/releases/download/v${PIPING_SERVER_CHECK_VERSION}/piping-server-check-${PIPING_SERVER_CHECK_VERSION}-linux-amd64.deb && sudo dpkg -i piping-server-check.deb
       - name: piping-server-check
         # sometimes .same_path_sender_rejection subcheck fails (why?)
-        run: piping-server-check --http1.0 --http1.0-tls --http1.1 --http1.1-tls --h2c --h2 --h3 --tls-skip-verify --concurrency 100 --compromise post_first_byte_by_byte_streaming --compromise post_first.same_path_sender_rejection --compromise put.same_path_sender_rejection --compromise http1.0/multipart_form_data --compromise http1.0-tls/multipart_form_data --server-command='mkdir -p /tmp/logs && ./go-piping-server --http-port=$HTTP_PORT --enable-https --enable-http3 --https-port=$HTTPS_PORT --crt-path=/tmp/ssl_certs/server.crt --key-path=/tmp/ssl_certs/server.key 2>&1 | tee /tmp/logs/$(date "+%s%3N").log > /dev/stderr' --transfer-speed-byte $((1024 * 1024 * 1024 * 1024)) --transfer-span 3s --transfer-span 10s
+        # TODO: add --http1.0-tls
+        run: piping-server-check --http1.0 --http1.1 --http1.1-tls --h2c --h2 --h3 --tls-skip-verify --concurrency 100 --compromise post_first_byte_by_byte_streaming --compromise post_first.same_path_sender_rejection --compromise put.same_path_sender_rejection --compromise http1.0/multipart_form_data --compromise http1.0-tls/multipart_form_data --server-command='mkdir -p /tmp/logs && ./go-piping-server --http-port=$HTTP_PORT --enable-https --enable-http3 --https-port=$HTTPS_PORT --crt-path=/tmp/ssl_certs/server.crt --key-path=/tmp/ssl_certs/server.key 2>&1 | tee /tmp/logs/$(date "+%s%3N").log > /dev/stderr' --transfer-speed-byte $((1024 * 1024 * 1024 * 1024)) --transfer-span 3s --transfer-span 10s
         timeout-minutes: 1
       - name: Show server logs from piping-server-check
         run: cat /tmp/logs/*

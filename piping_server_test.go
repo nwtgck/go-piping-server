@@ -218,15 +218,15 @@ func TestTransferSenderReceiver(t *testing.T) {
 		t.Fatal(t)
 	}
 	senderReq.Header.Set("Content-Type", "text/plain")
-	senderResCh := make(chan *http.Response)
-	go func() {
+	senderResCh := make(chan *http.Response, 1)
+	{
 		res, err := http.DefaultClient.Do(senderReq)
 		if err != nil {
 			t.Error(t)
 			return
 		}
 		senderResCh <- res
-	}()
+	}
 	receiverReq, err := http.NewRequest("GET", url+"/mypath", nil)
 	if err != nil {
 		t.Fatal(t)
