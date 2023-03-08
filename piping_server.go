@@ -195,6 +195,14 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		if !atomic.CompareAndSwapUint32(&pi.isSenderConnected, 0, 1) {
 			resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 			resWriter.WriteHeader(400)
+			reqContentLength := req.ContentLength
+			// NOTE: `req.ContentLength = 0` is a workaround for full duplex
+			// Replace with https://github.com/golang/go/blob/457fd1d52d17fc8e73d4890150eadab3128de64d/src/net/http/responsecontroller.go#L119-L141 in the future
+			req.ContentLength = 0
+			if f, ok := resWriter.(http.Flusher); ok {
+				f.Flush()
+			}
+			req.ContentLength = reqContentLength
 			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Another sender has been connected on '%s'.\n", path)))
 			return
 		}
