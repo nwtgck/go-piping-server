@@ -198,9 +198,18 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			resWriter.Write([]byte(fmt.Sprintf("[ERROR] Another sender has been connected on '%s'.\n", path)))
 			return
 		}
-		receiverResWriter := <-pi.receiverResWriterCh
 		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
-
+		resWriteFlusher := NewWriteFlusherIfPossible(resWriter)
+		if _, err := resWriteFlusher.Write([]byte("[INFO] Waiting for 1 receiver(s)...\n")); err != nil {
+			return
+		}
+		receiverResWriter := <-pi.receiverResWriterCh
+		if _, err := resWriteFlusher.Write([]byte("[INFO] A receiver was connected.\n")); err != nil {
+			return
+		}
+		if _, err := resWriteFlusher.Write([]byte("[INFO] Start sending to 1 receiver(s)!\n")); err != nil {
+			return
+		}
 		atomic.StoreUint32(&pi.isTransferring, 1)
 		transferHeader, transferBody := getTransferHeaderAndBody(req)
 		receiverResWriter.Header()["Content-Type"] = nil // not to sniff
@@ -217,7 +226,12 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 		}
 		receiverResWriter.Header().Set("X-Robots-Tag", "none")
 		receiverResWriteFlusher := NewWriteFlusherIfPossible(receiverResWriter)
-		io.Copy(receiverResWriteFlusher, transferBody)
+		if _, err := io.Copy(receiverResWriteFlusher, transferBody); err != nil {
+			return
+		}
+		if _, err := resWriteFlusher.Write([]byte("[INFO] Sent successfully!\n")); err != nil {
+			return
+		}
 		pi.sendFinishedCh <- struct{}{}
 		delete(s.pathToPipe, path)
 	case "OPTIONS":
