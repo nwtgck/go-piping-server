@@ -3,7 +3,7 @@ name: CI
 on: [push]
 
 env:
-  PIPING_SERVER_CHECK_VERSION: 0.7.1
+  PIPING_SERVER_CHECK_VERSION: 0.8.1
 
 jobs:
   build:
