@@ -3,7 +3,7 @@ module github.com/nwtgck/go-piping-server
 go 1.19
 
 require (
-	github.com/lucas-clemente/quic-go v0.31.1
+	github.com/quic-go/quic-go v0.33.0
 	github.com/spf13/cobra v1.7.0
 	golang.org/x/net v0.9.0
 	gotest.tools/v3 v3.4.0
@@ -15,10 +15,10 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/marten-seemann/qpack v0.3.0 // indirect
-	github.com/marten-seemann/qtls-go1-18 v0.1.4 // indirect
-	github.com/marten-seemann/qtls-go1-19 v0.1.2 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.2 // indirect
+	github.com/quic-go/qpack v0.4.0 // indirect
+	github.com/quic-go/qtls-go1-19 v0.2.1 // indirect
+	github.com/quic-go/qtls-go1-20 v0.1.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect

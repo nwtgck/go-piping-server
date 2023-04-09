@@ -3,9 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/nwtgck/go-piping-server"
 	"github.com/nwtgck/go-piping-server/version"
+	"github.com/quic-go/quic-go/http3"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
