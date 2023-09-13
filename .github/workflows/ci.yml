@@ -12,11 +12,11 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Go 1.x
         uses: actions/setup-go@v4
         with:
-          go-version: "1.20"
+          go-version: "1.21"
       - name: Build
         run: CGO_ENABLED=0 go build -o go-piping-server main/main.go
       - name: Test
@@ -25,11 +25,11 @@ jobs:
   linux_piping_server_check:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Go 1.x
         uses: actions/setup-go@v4
         with:
-          go-version: "1.20"
+          go-version: "1.21"
       - name: Build
         run: CGO_ENABLED=0 go build -o go-piping-server main/main.go
       # Without this, HTTP/3 client causes an error "failed to sufficiently increase receive buffer size (was: 208 kiB, wanted: 2048 kiB, got: 416 kiB)": https://github.com/quic-go/quic-go/wiki/UDP-Receive-Buffer-Size

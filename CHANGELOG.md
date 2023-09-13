@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [0.6.3] - 2023-09-13
+### Changed
+* Update dependencies
+
 ## [0.6.2] - 2023-08-09
 ### Changed
 * Update dependencies
@@ -61,7 +65,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 ### Added
 * Initial release
 
-[Unreleased]: https://github.com/nwtgck/go-piping-server/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/nwtgck/go-piping-server/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/nwtgck/go-piping-server/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/nwtgck/go-piping-server/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/nwtgck/go-piping-server/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/nwtgck/go-piping-server/compare/v0.5.0...v0.6.0
