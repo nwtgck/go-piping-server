@@ -3,7 +3,7 @@ module github.com/nwtgck/go-piping-server
 go 1.19
 
 require (
-	github.com/quic-go/quic-go v0.39.1
+	github.com/quic-go/quic-go v0.39.3
 	github.com/spf13/cobra v1.7.0
 	golang.org/x/net v0.17.0
 	gotest.tools/v3 v3.5.1
