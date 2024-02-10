@@ -2,6 +2,7 @@ package piping_server
 
 import (
 	"fmt"
+	"github.com/nwtgck/go-piping-server/syncmap"
 	"github.com/nwtgck/go-piping-server/version"
 	"io"
 	"log"
@@ -10,7 +11,6 @@ import (
 	"net/http"
 	"net/textproto"
 	"strconv"
-	"sync"
 	"sync/atomic"
 )
 
@@ -41,8 +41,7 @@ type pipe struct {
 }
 
 type PipingServer struct {
-	pathToPipe map[string]*pipe
-	mutex      *sync.Mutex
+	pathToPipe syncmap.SyncMap[string, *pipe]
 	logger     *log.Logger
 }
 
@@ -57,26 +56,19 @@ func isReservedPath(path string) bool {
 
 func NewServer(logger *log.Logger) *PipingServer {
 	return &PipingServer{
-		pathToPipe: map[string]*pipe{},
-		mutex:      new(sync.Mutex),
+		pathToPipe: syncmap.SyncMap[string, *pipe]{},
 		logger:     logger,
 	}
 }
 
 func (s *PipingServer) getPipe(path string) *pipe {
-	// Set pipe if not found on the path
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	if _, ok := s.pathToPipe[path]; !ok {
-		pi := &pipe{
-			receiverResWriterCh: make(chan http.ResponseWriter, 1),
-			sendFinishedCh:      make(chan struct{}),
-			isSenderConnected:   0,
-		}
-		s.pathToPipe[path] = pi
-		return pi
+	pi := &pipe{
+		receiverResWriterCh: make(chan http.ResponseWriter, 1),
+		sendFinishedCh:      make(chan struct{}),
+		isSenderConnected:   0,
 	}
-	return s.pathToPipe[path]
+	pi, _ = s.pathToPipe.LoadOrStore(path, pi)
+	return pi
 }
 
 func transferHeaderIfExists(w http.ResponseWriter, reqHeader textproto.MIMEHeader, header string) {
@@ -252,7 +244,7 @@ func (s *PipingServer) Handler(resWriter http.ResponseWriter, req *http.Request)
 			return
 		}
 		pi.sendFinishedCh <- struct{}{}
-		delete(s.pathToPipe, path)
+		s.pathToPipe.Delete(path)
 	case "OPTIONS":
 		resWriter.Header().Set("Access-Control-Allow-Origin", "*")
 		resWriter.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, OPTIONS")
