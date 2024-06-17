@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/quic-go/quic-go v0.40.1
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	golang.org/x/net v0.26.0
 	gotest.tools/v3 v3.5.1
 )
