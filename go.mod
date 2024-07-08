@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/quic-go/quic-go v0.40.1
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/net v0.26.0
+	golang.org/x/net v0.27.0
 	gotest.tools/v3 v3.5.1
 )
 
@@ -19,10 +19,10 @@ require (
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/mock v0.4.0 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3 // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 )
